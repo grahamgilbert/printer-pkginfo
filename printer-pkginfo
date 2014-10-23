@@ -1,0 +1,227 @@
+#!/usr/bin/python
+
+import plistlib
+import optparse
+import tempfile
+import os
+import subprocess
+import sys
+
+makepkginfo = '/usr/local/munki/makepkginfo'
+
+def fail(errmsg=''):
+    '''Print any error message to stderr,
+    clean up install data, and exit'''
+    if errmsg:
+        print >> sys.stderr, errmsg
+    # exit
+    exit(1)
+
+def main():
+    usage = "%prog [options]"
+    o = optparse.OptionParser(usage=usage)
+
+    o.add_option("--plist",
+        help=("Path to an XML plist file containing key/value pairs "
+              "for Version, Display Name, Queue name, PPD location, "
+              "printer location, printer options, . "))
+    
+    opts, args = o.parse_args()
+    plist_opts = {}
+    try:
+        plist_opts = plistlib.readPlist(opts.plist)
+    except:
+        fail('Could not read %s' % (opts.plist))
+    
+    # Make sure makepkginfo is available
+    if not os.path.isfile(makepkginfo) or not os.access(makepkginfo, os.X_OK):
+        fail("A required exeuctable, '%s', could not be found "
+                 "or is not executable!" % makepkginfo)
+
+    if plist_opts['version']:
+        version = plist_opts['version']
+    else:
+        version = '0.1'
+
+    if not plist_opts['name'] or not plist_opts['queue_name'] or not plist_opts['display_name'] or not plist_opts['ppd'] or not plist_opts['location'] or not plist_opts['address']:
+        fail("One or more of the required options are missing from %s" % opts.plist)
+
+    queue_name = plist_opts['queue_name']
+    name = plist_opts['name']
+    if len(queue_name) > 24:
+        fail("Queue name is too long")
+
+    display_name = plist_opts['display_name']
+    ppd = plist_opts['ppd']
+    location = plist_opts['location']
+    address = plist_opts['address']
+
+    # build the install check script
+
+    install_check_content = """
+#!/bin/sh
+
+# Based on 2010 Walter Meyer SUNY Purchase College (c)
+# Modified by Nick McSpadden, 2013
+
+# Script to install and setup printers on a Mac OS X system in a "Munki-Friendly" way.
+# Make sure to install the required drivers first!
+
+# Variables. Edit these.
+printername="%s"
+location="%s"
+gui_display_name="%s"
+address="%s"
+driver_ppd="%s"
+# Populate these options if you want to set specific options for the printer. E.g. duplexing installed, etc.
+option_1=""
+option_2=""
+option_3=""
+currentVersion="%s"
+
+### Determine if receipt is installed ###
+if [ -e /private/etc/cups/deployment/receipts/$printername.plist ]; then
+        storedVersion=`/usr/libexec/PlistBuddy -c "Print :version" /private/etc/cups/deployment/receipts/$printername.plist`
+        echo "Stored version: $storedVersion"
+else
+        storedVersion="0"
+fi
+
+versionComparison=`echo "$storedVersion < $currentVersion" | bc -l`
+# This will be 0 if the current receipt is greater than or equal to current version of the script
+
+### Printer Install ###
+# If the queue already exists (returns 0), we don't need to reinstall it.
+/usr/bin/lpstat -p $printername
+if [ $? -eq 0 ]; then
+        if [ $versionComparison == 0 ]; then
+                # We are at the current or greater version
+                exit 1
+        fi
+    # We are of lesser version, and therefore we should delete the printer and reinstall.
+    exit 0
+fi
+""" % (queue_name, location, display_name, address, ppd, version)
+
+    postinstall_content = """
+#!/bin/sh
+
+# Based on 2010 Walter Meyer SUNY Purchase College (c)
+# Modified by Nick McSpadden, 2013
+
+# Script to install and setup printers on a Mac OS X system in a "Munki-Friendly" way.
+# Make sure to install the required drivers first!
+
+# Variables. Edit these.
+printername="%s"
+location="%s"
+gui_display_name="%s"
+address="%s"
+driver_ppd="%s"
+# Populate these options if you want to set specific options for the printer. E.g. duplexing installed, etc.
+option_1=""
+option_2=""
+option_3=""
+currentVersion="%s"
+
+### Determine if receipt is installed ###
+if [ -e /private/etc/cups/deployment/receipts/$printername.plist ]; then
+        storedVersion=`/usr/libexec/PlistBuddy -c "Print :version" /private/etc/cups/deployment/receipts/$printername.plist`
+        echo "Stored version: $storedVersion"
+else
+        storedVersion="0"
+fi
+
+versionComparison=`echo "$storedVersion < $currentVersion" | bc -l`
+# This will be 0 if the current receipt is greater than or equal to current version of the script
+
+### Printer Install ###
+# If the queue already exists (returns 0), we don't need to reinstall it.
+/usr/bin/lpstat -p $printername
+if [ $? -eq 0 ]; then
+        if [ $versionComparison == 0 ]; then
+                # We are at the current or greater version
+                exit 1
+        fi
+    # We are of lesser version, and therefore we should delete the printer and reinstall.
+    /usr/sbin/lpadmin -x $printername
+fi
+
+# Now we can install the printer.
+/usr/sbin/lpadmin \
+        -p "$printername" \
+        -L "$location" \
+        -D "$gui_display_name" \
+        -v lpd://"${address}" \
+        -P "$driver_ppd" \
+        -o "$option_1" \
+        -o "$option_2" \
+        -o "$option_3" \
+        -o printer-is-shared=false \
+        -o printer-error-policy=abort-job \
+        -E
+# Enable and start the printers on the system (after adding the printer initially it is paused).
+/usr/sbin/cupsenable $(lpstat -p | grep -w "printer" | awk '{print$2}')
+
+# Create a receipt for the printer
+mkdir -p /private/etc/cups/deployment/receipts
+/usr/libexec/PlistBuddy -c "Add :version string" /private/etc/cups/deployment/receipts/$printername.plist
+/usr/libexec/PlistBuddy -c "Set :version $currentVersion" /private/etc/cups/deployment/receipts/$printername.plist
+
+# Permission the directories properly.
+chown -R root:_lp /private/etc/cups/deployment
+chmod -R 700 /private/etc/cups/deployment
+
+exit 0
+
+    """ % (queue_name, location, display_name, address, ppd, version)
+
+    uninstall_content = """
+#!/bin/sh
+printerName="%s"
+/usr/sbin/lpadmin -x $printerName
+rm -f /private/etc/cups/deployment/receipts/$printerName.plist
+    """ % (queue_name)
+
+    # write the scripts to temp files
+    tempdir = tempfile.mkdtemp()
+
+    installcheck = os.path.join(tempdir, 'installcheck')
+    f = open(installcheck, "w")
+    f.write(install_check_content)
+    f.close()
+    installcheck_option = "--installcheck_script=%s" % installcheck
+    
+    postinstall = os.path.join(tempdir, 'postinstall')
+    f = open(postinstall, "w")
+    f.write(postinstall_content)
+    f.close()
+    postinstall_option = "--postinstall_script=%s" % postinstall
+
+    uninstall = os.path.join(tempdir, 'uninstall')
+    f = open(uninstall, "w")
+    f.write(uninstall_content)
+    f.close()
+    uninstall_option = "--uninstall_script=%s" % uninstall
+
+
+    name_opt = '--name=%s' % name
+    version_opt = '--pkgvers=%s' % version
+    # make pkg info
+    cmd = [makepkginfo, installcheck_option, postinstall_option, uninstall_option, name_opt, version_opt, '--unattended_install', '--uninstall_method=script', '--nopkg']
+
+    task = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = task.communicate()
+
+    pkginfo = plistlib.readPlistFromString(stdout)
+
+    # read it back so we can add in the requires (if required, sic)
+    if plist_opts['requires']:
+        requires = plist_opts.get('requires')
+        pkginfo['requires'] = requires
+
+    print plistlib.writePlistToString(pkginfo)
+
+    # print and clean up
+if __name__ == '__main__':
+    main()
