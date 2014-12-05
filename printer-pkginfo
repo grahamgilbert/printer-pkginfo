@@ -58,8 +58,7 @@ def main():
 
     # build the install check script
 
-    install_check_content = """
-#!/bin/sh
+    install_check_content = """#!/bin/sh
 
 # Based on 2010 Walter Meyer SUNY Purchase College (c)
 # Modified by Nick McSpadden, 2013
@@ -103,8 +102,7 @@ if [ $? -eq 0 ]; then
 fi
 """ % (queue_name, location, display_name, address, ppd, version)
 
-    postinstall_content = """
-#!/bin/sh
+    postinstall_content = """#!/bin/sh
 
 # Based on 2010 Walter Meyer SUNY Purchase College (c)
 # Modified by Nick McSpadden, 2013
@@ -176,8 +174,7 @@ exit 0
 
     """ % (queue_name, location, display_name, address, ppd, version)
 
-    uninstall_content = """
-#!/bin/sh
+    uninstall_content = """#!/bin/sh
 printerName="%s"
 /usr/sbin/lpadmin -x $printerName
 rm -f /private/etc/cups/deployment/receipts/$printerName.plist
