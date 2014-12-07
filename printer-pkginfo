@@ -43,6 +43,16 @@ def main():
     else:
         version = '0.1'
 
+    if plist_opts['options']:
+        options = plist_opts['options']
+    else:
+        options = None
+
+    formatted_options = ""
+    for option in options:
+        built = "-o " + option + " "
+        formatted_options = formatted_options + built
+
     if not plist_opts['name'] or not plist_opts['queue_name'] or not plist_opts['display_name'] or not plist_opts['ppd'] or not plist_opts['location'] or not plist_opts['address']:
         fail("One or more of the required options are missing from %s" % opts.plist)
 
@@ -152,9 +162,7 @@ fi
         -D "$gui_display_name" \
         -v lpd://"${address}" \
         -P "$driver_ppd" \
-        -o "$option_1" \
-        -o "$option_2" \
-        -o "$option_3" \
+        %s \
         -o printer-is-shared=false \
         -o printer-error-policy=abort-job \
         -E
@@ -172,7 +180,7 @@ chmod -R 700 /private/etc/cups/deployment
 
 exit 0
 
-    """ % (queue_name, location, display_name, address, ppd, version)
+    """ % (queue_name, location, display_name, address, ppd, version, formatted_options)
 
     uninstall_content = """#!/bin/sh
 printerName="%s"

@@ -20,5 +20,10 @@
 	<array>
 		<string>HPPrinterDrivers</string>
 	</array>
+	<key>options</key>
+	<array>
+		<string>landscape</string>
+		<string>media=A4</string>
+	</array>
 </dict>
 </plist>
