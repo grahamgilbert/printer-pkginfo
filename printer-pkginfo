@@ -25,14 +25,14 @@ def main():
         help=("Path to an XML plist file containing key/value pairs "
               "for Version, Display Name, Queue name, PPD location, "
               "printer location, printer options, . "))
-    
+
     opts, args = o.parse_args()
     plist_opts = {}
     try:
         plist_opts = plistlib.readPlist(opts.plist)
     except:
         fail('Could not read %s' % (opts.plist))
-    
+
     # Make sure makepkginfo is available
     if not os.path.isfile(makepkginfo) or not os.access(makepkginfo, os.X_OK):
         fail("A required exeuctable, '%s', could not be found "
@@ -48,12 +48,17 @@ def main():
     else:
         options = None
 
+    if plist_opts['protocol']:
+        protocol = plist_opts['protocol']
+    else:
+        protocol = 'lpd'
+
     formatted_options = ""
     for option in options:
         built = "-o " + option + " "
         formatted_options = formatted_options + built
 
-    if not plist_opts['name'] or not plist_opts['queue_name'] or not plist_opts['display_name'] or not plist_opts['ppd'] or not plist_opts['location'] or not plist_opts['address']:
+    if not plist_opts['name'] or not plist_opts['queue_name'] or not plist_opts['display_name'] or not plist_opts['ppd'] or not plist_opts['address']:
         fail("One or more of the required options are missing from %s" % opts.plist)
 
     queue_name = plist_opts['queue_name']
@@ -63,7 +68,10 @@ def main():
 
     display_name = plist_opts['display_name']
     ppd = plist_opts['ppd']
-    location = plist_opts['location']
+    if plist_opts['location']:
+        location = plist_opts['location']
+    else:
+        location = ""
     address = plist_opts['address']
 
     # build the install check script
@@ -131,6 +139,7 @@ option_1=""
 option_2=""
 option_3=""
 currentVersion="%s"
+protocol="%s"
 
 ### Determine if receipt is installed ###
 if [ -e /private/etc/cups/deployment/receipts/$printername.plist ]; then
@@ -160,7 +169,7 @@ fi
         -p "$printername" \
         -L "$location" \
         -D "$gui_display_name" \
-        -v lpd://"${address}" \
+        -v "${protocol}"://"${address}" \
         -P "$driver_ppd" \
         %s \
         -o printer-is-shared=false \
@@ -180,7 +189,7 @@ chmod -R 700 /private/etc/cups/deployment
 
 exit 0
 
-    """ % (queue_name, location, display_name, address, ppd, version, formatted_options)
+    """ % (queue_name, location, display_name, address, ppd, version, protocol,formatted_options)
 
     uninstall_content = """#!/bin/sh
 printerName="%s"
@@ -196,7 +205,7 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
     f.write(install_check_content)
     f.close()
     installcheck_option = "--installcheck_script=%s" % installcheck
-    
+
     postinstall = os.path.join(tempdir, 'postinstall')
     f = open(postinstall, "w")
     f.write(postinstall_content)
