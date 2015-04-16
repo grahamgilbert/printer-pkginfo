@@ -38,25 +38,26 @@ def main():
         fail("A required exeuctable, '%s', could not be found "
                  "or is not executable!" % makepkginfo)
 
-    if plist_opts['version']:
+    try:
         version = plist_opts['version']
-    else:
+    except:
         version = '0.1'
 
-    if plist_opts['options']:
+    try:
         options = plist_opts['options']
-    else:
+    except:
         options = None
 
-    if plist_opts['protocol']:
+    try:
         protocol = plist_opts['protocol']
-    else:
+    except:
         protocol = 'lpd'
 
     formatted_options = ""
-    for option in options:
-        built = "-o " + option + " "
-        formatted_options = formatted_options + built
+    if options:
+        for option in options:
+            built = "-o " + option + " "
+            formatted_options = formatted_options + built
 
     if not plist_opts['name'] or not plist_opts['queue_name'] or not plist_opts['display_name'] or not plist_opts['ppd'] or not plist_opts['address']:
         fail("One or more of the required options are missing from %s" % opts.plist)
