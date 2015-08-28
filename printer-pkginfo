@@ -235,6 +235,11 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
         requires = plist_opts.get('requires')
         pkginfo['requires'] = requires
 
+    # Add Uninstallable flag
+    if plist_opts['uninstallable']:
+        uninstallable = plist_opts.get('uninstallable')
+        pkginfo['uninstallable'] = uninstallable
+
 
     print plistlib.writePlistToString(pkginfo)
 
