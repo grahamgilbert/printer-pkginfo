@@ -223,7 +223,7 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
     name_opt = '--name=%s' % name
     version_opt = '--pkgvers=%s' % version
     # make pkg info
-    cmd = [makepkginfo, installcheck_option, postinstall_option, uninstall_option, name_opt, version_opt, '--unattended_install', '--uninstall_method=script', '--nopkg']
+    cmd = [makepkginfo, installcheck_option, postinstall_option, uninstall_option, name_opt, version_opt, '--unattended_install', '--uninstall_method=uninstall_script', '--nopkg']
 
     task = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = task.communicate()
@@ -235,7 +235,9 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
         requires = plist_opts.get('requires')
         pkginfo['requires'] = requires
 
+
     print plistlib.writePlistToString(pkginfo)
+
 
     # print and clean up
 if __name__ == '__main__':
