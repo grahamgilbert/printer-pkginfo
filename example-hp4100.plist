@@ -16,6 +16,8 @@
 	<string>Front Desk</string>
 	<key>address</key>
 	<string>hp-4100</string>
+	<key>default_catalog</key>
+	<string>development</string>
 	<key>requires</key>
 	<array>
 		<string>HPPrinterDrivers</string>
