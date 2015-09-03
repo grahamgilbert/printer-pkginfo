@@ -224,7 +224,7 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
     f.close()
     uninstall_option = "--uninstall_script=%s" % uninstall
 
-    catalog_opt =str('-c '+catalog)
+    catalog_opt =str('-c'+catalog)
     name_opt = '--name=%s' % name
     version_opt = '--pkgvers=%s' % version
     # make pkg info
