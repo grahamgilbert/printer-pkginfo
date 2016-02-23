@@ -52,6 +52,16 @@ def main():
         catalog = plist_opts['default_catalog']
     except:
         catalog = 'testing'
+    
+    try:
+        developer = plist_opts['default_developer']
+    except:
+        developer = 'Printers'
+
+    try:
+        category = plist_opts['default_category']
+    except:
+        category = 'Printers'
 
     try:
         protocol = plist_opts['protocol']
@@ -227,8 +237,11 @@ rm -f /private/etc/cups/deployment/receipts/$printerName.plist
     catalog_opt =str('-c'+catalog)
     name_opt = '--name=%s' % name
     version_opt = '--pkgvers=%s' % version
+    developer_opt = '--developer=%s' % developer
+    category_opt = '--category=%s' % category
+    displayname_opt = '--displayname=%s' % display_name
     # make pkg info
-    cmd = [makepkginfo, installcheck_option, postinstall_option, uninstall_option, name_opt, version_opt, catalog_opt, '--unattended_install', '--uninstall_method=uninstall_script', '--nopkg']
+    cmd = [makepkginfo, installcheck_option, postinstall_option, uninstall_option, name_opt, version_opt, catalog_opt, developer_opt, category_opt, displayname_opt, '--unattended_install', '--uninstall_method=uninstall_script', '--nopkg']
 
     task = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = task.communicate()
