@@ -39,9 +39,10 @@ def main():
     o = optparse.OptionParser(usage=usage)
 
     o.add_option("--plist",
-        help=("Path to an XML plist file containing key/value pairs "
-              "for Version, Display Name, Queue name, PPD location, "
-              "printer location, printer options, . "))
+                 help=("Path to an XML plist file containing key/value pairs "
+                       "for version, display_name, queue_name, ppd, location, "
+                       "and other options. See example-hp4100.plist for an "
+                       "example."))
 
     opts, args = o.parse_args()
     plist_opts = {}
